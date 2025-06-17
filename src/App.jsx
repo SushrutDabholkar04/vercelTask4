@@ -90,7 +90,7 @@
 // frontend/src/App.jsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Navbar from './components/navbar';
+import Navbar from './components/Navbar';
 import Footer from './components/footer';
 import HomePage from './pages/HomePage';
 import ProductsPage from './pages/ProductsPage';
