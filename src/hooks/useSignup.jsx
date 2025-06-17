@@ -14,7 +14,7 @@ export const useSignup = () => {
     setError(null)
 
     try { // <-- Add try-catch for the fetch call itself
-      const response = await fetch('/api/user/signup', {
+      const response = await fetch('https://task4backend-su95.onrender.com/api/user/signup', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ email, password })
