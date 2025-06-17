@@ -108,7 +108,7 @@ const CheckoutPage = () => {
             setErrorClientSecret(null);
 
             try {
-                const response = await fetch('/api/payments/create-payment-intent', {
+                const response = await fetch('https://task4backend-su95.onrender.com/api/payments/create-payment-intent', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ amount: total }),

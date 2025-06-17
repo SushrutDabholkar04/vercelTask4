@@ -25,7 +25,7 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/send-otp-email", {
+      const res = await fetch("https://task4backend-su95.onrender.com/api/auth/send-otp-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -53,7 +53,7 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/verify-otp", {
+      const res = await fetch("https://task4backend-su95.onrender.com/api/auth/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, otp }),
