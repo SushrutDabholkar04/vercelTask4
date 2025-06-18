@@ -1,17 +1,16 @@
 import React, { useEffect, useRef, useState, Suspense } from "react";
 import { io } from "socket.io-client";
 import { Canvas, useLoader } from "@react-three/fiber";
-import URDFLoader from 'urdf-loader'; // Make sure this import works, otherwise we might need to debug it again based on new errors
+import URDFLoader from 'urdf-loader';
 import { OrbitControls, Environment } from "@react-three/drei";
-import * as THREE from 'three'; // Import THREE for Box3 and Vector3 (needed for the PhoneCam side, but good to have here if you expand)
+import * as THREE from 'three';
+import { useNavigate } from 'react-router-dom'; // <--- NEW: Import useNavigate
 
 const NODE_SERVER_URL = "https://backend-746d.onrender.com";
 
-// NEW: Define the path to your Hexapod URDF file and its associated package root
 const ROBOT_URDF_PATH = "/hexapod_robot/crab_model.urdf";
 const ROBOT_PACKAGE_PATH = "/hexapod_robot/";
 
-// NEW: UrdfRobotModel Component (Identical to PhoneCam's version, but now includes global movement)
 const UrdfRobotModel = ({ jointStates, controlMode }) => {
     const robot = useLoader(URDFLoader, ROBOT_URDF_PATH, (loader) => {
         loader.workingPath = ROBOT_PACKAGE_PATH;
@@ -24,25 +23,23 @@ const UrdfRobotModel = ({ jointStates, controlMode }) => {
             console.log("URDF Hexapod Robot Loaded:", robot);
             console.log("Available Hexapod Joints:", Object.keys(robot.joints));
 
-            // Set initial scale for the local display
             const scaleFactor = 10;
             robot.scale.set(scaleFactor, scaleFactor, scaleFactor);
-            robot.position.set(0, -2.0 * scaleFactor, 0); // Adjust vertical offset based on new scale
+            robot.position.set(0, -2.0 * scaleFactor, 0);
         }
     }, [robot]);
 
     useEffect(() => {
-        if (robot && controlMode === 'urdf' && jointStates.cmd) { // Ensure jointStates.cmd exists
+        if (robot && controlMode === 'urdf' && jointStates.cmd) {
             const rotationAmount = 0.1;
             const liftAmount = 0.1;
-            const moveAmount = 0.5; // Amount for forward/backward/up/down movement
+            const moveAmount = 0.5;
 
             const getJointValue = (jointName) => {
                 const joint = robot.joints[jointName];
                 return joint ? (joint.angle || 0) : 0;
             };
 
-            // --- Joint movement logic based on jointStates.cmd ---
             if (jointStates.cmd === 'left') {
                 ['coxa_joint_r1', 'coxa_joint_r2', 'coxa_joint_r3'].forEach(jointName => {
                     const joint = robot.joints[jointName];
@@ -97,31 +94,32 @@ const UrdfRobotModel = ({ jointStates, controlMode }) => {
 
                 console.log("Hexapod: Attempting 'jump'.");
             }
-            // NEW: Global robot movement
             else if (jointStates.cmd === 'forward') {
-                robot.position.z -= moveAmount; // Assuming Z- is forward for your model
+                robot.position.z -= moveAmount;
                 console.log("Hexapod: Moving forward. New Z:", robot.position.z);
             }
             else if (jointStates.cmd === 'backward') {
-                robot.position.z += moveAmount; // Assuming Z+ is backward
+                robot.position.z += moveAmount;
                 console.log("Hexapod: Moving backward. New Z:", robot.position.z);
             }
             else if (jointStates.cmd === 'up') {
-                robot.position.y += moveAmount; // Moving up in Y
+                robot.position.y += moveAmount;
                 console.log("Hexapod: Moving up. New Y:", robot.position.y);
             }
             else if (jointStates.cmd === 'down') {
-                robot.position.y -= moveAmount; // Moving down in Y
+                robot.position.y -= moveAmount;
                 console.log("Hexapod: Moving down. New Y:", robot.position.y);
             }
         }
-    }, [jointStates, robot, controlMode]); // Dependencies are correct
+    }, [jointStates, robot, controlMode]);
 
     return <primitive object={robot} />;
 };
 
 
 const ControlPanel = () => {
+    const navigate = useNavigate(); // <--- NEW: Initialize useNavigate
+
     const remoteVideoRef = useRef(null);
     const peerConnection = useRef(null);
     const socket = useRef(null);
@@ -130,7 +128,7 @@ const ControlPanel = () => {
     const [selectedPhoneId, setSelectedPhoneId] = useState("");
     const [status, setStatus] = useState("Connecting to server...");
     const [overlayOn, setOverlayOn] = useState(false);
-    const [localJointStates, setLocalJointStates] = useState({}); // For local URDF control
+    const [localJointStates, setLocalJointStates] = useState({});
     const [displayMode, setDisplayMode] = useState('video'); // 'video' or 'urdf'
 
     useEffect(() => {
@@ -150,7 +148,6 @@ const ControlPanel = () => {
         socket.current.on("available_phones", (phones) => {
             console.log("Available phones:", phones);
             setAvailablePhones(phones);
-            // Auto-select the first phone if none is selected and phones are available
             if (!selectedPhoneId && phones.length > 0) {
                 setSelectedPhoneId(phones[0]);
             }
@@ -187,7 +184,7 @@ const ControlPanel = () => {
                 socket.current.disconnect();
             }
         };
-    }, []); // Empty dependency array means this runs once on mount
+    }, []);
 
     const setupPeerConnection = async (phoneDeviceId, sdpOffer = null) => {
         if (peerConnection.current) {
@@ -251,20 +248,16 @@ const ControlPanel = () => {
                     laptopSocketId: socket.current.id
                 });
                 if (remoteVideoRef.current) {
-                    remoteVideoRef.current.srcObject = null; // Clear previous stream
+                    remoteVideoRef.current.srcObject = null;
                 }
             }
         }
     };
 
-    // Inside ControlPanel component
     const sendCommand = (cmd) => {
         if (displayMode === 'urdf') {
-            // If in URDF mode, control the local URDF model
-            // Add a timestamp or a counter to force a state update
-            setLocalJointStates({ cmd: cmd, timestamp: Date.now() }); // *** ADDED timestamp ***
+            setLocalJointStates({ cmd: cmd, timestamp: Date.now() });
         } else {
-            // If in video mode, send command to the selected phone
             if (!selectedPhoneId) {
                 alert("Please select a phone to control.");
                 return;
@@ -297,7 +290,6 @@ const ControlPanel = () => {
                 </select>
             </div>
 
-            {/* NEW: Buttons to switch display mode (Laptop side) */}
             <div style={{ marginBottom: '15px' }}>
                 <button
                     onClick={() => setDisplayMode('video')}
@@ -311,9 +303,15 @@ const ControlPanel = () => {
                 >
                     Show URDF Robot (Local)
                 </button>
+                {/* NEW: Button to navigate to /phone-camera */}
+                <button
+                    onClick={() => navigate('/phone-camera')} // <--- NEW: Navigation button
+                    style={styles.navigateButton} // Use a specific style for this button
+                >
+                    Go to Phone Camera Page
+                </button>
             </div>
 
-            {/* CONDITIONAL RENDERING based on displayMode */}
             {displayMode === 'video' && (
                 <>
                     {selectedPhoneId ? (
@@ -330,7 +328,6 @@ const ControlPanel = () => {
                         <p style={styles.noPhoneMessage}>Please select a phone to view its live feed.</p>
                     )}
 
-                    {/* Toggle Overlay (only for video mode) */}
                     {selectedPhoneId && (
                         <button onClick={() => setOverlayOn(!overlayOn)} style={styles.toggleButton}>
                             {overlayOn ? "Turn On Stream View" : "Turn Off Stream View"}
@@ -341,14 +338,12 @@ const ControlPanel = () => {
 
             {displayMode === 'urdf' && (
                 <div style={styles.urdfContainer}>
-                    {/* The 3D scene canvas for local URDF */}
                     <Canvas camera={{ position: [1, 1, 1], fov: 75 }}>
                         <ambientLight intensity={0.8} />
                         <directionalLight position={[2, 5, 2]} intensity={1} />
                         <directionalLight position={[-2, -5, -2]} intensity={0.5} />
                         <Environment preset="studio" />
                         <Suspense fallback={null}>
-                            {/* Pass localJointStates for local control */}
                             <UrdfRobotModel jointStates={localJointStates} controlMode={displayMode} />
                         </Suspense>
                         <OrbitControls />
@@ -356,8 +351,6 @@ const ControlPanel = () => {
                 </div>
             )}
 
-
-            {/* Controls (apply to selected phone in video mode, or local URDF in URDF mode) */}
             <div style={styles.controlButtons}>
                 <button onClick={() => sendCommand("forward")} style={styles.controlBtn}>⬆️ Forward</button>
                 <button onClick={() => sendCommand("backward")} style={styles.controlBtn}>⬇️ Backward</button>
@@ -414,7 +407,7 @@ const styles = {
     },
     select: {
         padding: "10px 15px",
-        borderRadius: "8고자",
+        borderRadius: "8px", // Corrected from "8고자"
         border: "1px solid #a0a0a0",
         backgroundColor: "#f9f9f9",
         fontSize: "15px",
@@ -477,17 +470,17 @@ const styles = {
     },
     controlButtons: {
         marginTop: "30px",
-        display: "grid", // Use grid for better layout of many buttons
-        gridTemplateColumns: "repeat(3, 1fr)", // 3 columns
+        display: "grid",
+        gridTemplateColumns: "repeat(3, 1fr)",
         gap: "15px",
         justifyContent: "center",
-        alignItems: "center", // Align items vertically
-        maxWidth: "450px", // Limit width to prevent buttons from being too wide
-        margin: "30px auto 0 auto" // Center the grid
+        alignItems: "center",
+        maxWidth: "450px",
+        margin: "30px auto 0 auto"
     },
     controlBtn: {
-        padding: "12px 15px", // Adjust padding for more buttons
-        fontSize: "14px", // Smaller font size for more buttons
+        padding: "12px 15px",
+        fontSize: "14px",
         backgroundColor: "#3498db",
         color: "white",
         border: "none",
@@ -498,7 +491,7 @@ const styles = {
         textShadow: "1px 1px 2px rgba(0,0,0,0.1)",
         boxShadow: "0 4px 10px rgba(0,0,0,0.15)",
         outline: "none",
-        whiteSpace: "nowrap", // Prevent text wrapping
+        whiteSpace: "nowrap",
     },
     noPhoneMessage: {
         color: "#777",
@@ -521,14 +514,28 @@ const styles = {
         borderColor: '#007bff',
     },
     urdfContainer: {
-        width: '100%', // Take full width
-        maxWidth: '560px', // Max width from PhoneCam styles
-        height: '400px', // Consistent height with PhoneCam
+        width: '100%',
+        maxWidth: '560px',
+        height: '400px',
         border: '1px solid gray',
         margin: '10px auto',
         borderRadius: '8px',
         overflow: 'hidden',
         backgroundColor: '#f0f0f0',
+    },
+    navigateButton: { // NEW style for the navigation button
+        padding: '10px 20px',
+        backgroundColor: '#28a745', // Green color for distinction
+        color: 'white',
+        border: 'none',
+        borderRadius: '8px',
+        cursor: 'pointer',
+        fontSize: '16px',
+        fontWeight: 'bold',
+        transition: 'background-color 0.3s ease',
+        marginTop: '10px', // Add some space above
+        display: 'block', // Make it a block element to take full width or be on its own line
+        margin: '10px auto', // Center it
     },
 };
 
